@@ -47,20 +47,29 @@ let compare a b = match a , b with
     else  compare (Union(tl1)) (Union(tl2))
 
 
-let rec output outch t = match t with
+let output outch t = 
+  let rec aux outch t = match t with
   | Atom s -> output_string outch s
   | Arrow (t1,t2) -> 
-    Printf.fprintf outch "(%a -> %a)" output t1 output t2
+    Printf.fprintf outch "(%a -> %a)" aux t1 aux t2
   | Var x -> output_string outch x
-  | Apply (t1,t2) -> Printf.fprintf outch "(%a %a)" output t1 output t2
+  | Apply (t1,t2) -> Printf.fprintf outch "(%a %a)" aux t1 aux t2
   | Tuple (hd :: tl) -> 
-    Printf.fprintf outch "(%a" output hd;
-    List.iter (fun t -> Printf.fprintf outch " * %a" output t) tl;
+    Printf.fprintf outch "(%a" aux hd;
+    List.iter (fun t -> Printf.fprintf outch " * %a" aux t) tl;
     Printf.fprintf outch ")" 
   | Union ((c,t) :: tl) -> 
-    Printf.fprintf outch "(%s of %a" c output t;
-    List.iter (fun (c,t) -> Printf.fprintf outch " | %s of %a" c output t) tl;
+    Printf.fprintf outch "(%s of %a" c aux t;
+    List.iter (fun (c,t) -> Printf.fprintf outch " | %s of %a" c aux t) tl;
     Printf.fprintf outch ")" 
+  in
+  match t with
+  | Union ((c,t) :: tl) -> 
+    Printf.fprintf outch "%s of %a" c aux t;
+    List.iter (fun (c,t) -> Printf.fprintf outch " | %s of %a" c aux t) tl;
+    Printf.fprintf outch "" 
+  | Apply (t1,t2) -> Printf.fprintf outch "%a %a" aux t1 aux t2
+  | _ -> aux outch t
 
 exception NoUnification
 let rec unify u v = match u with

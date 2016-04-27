@@ -1,3 +1,5 @@
-type sum = A of a | B of b
+type sum = I of int | S of string
 
-val make_a : a -> sum
+val of_int : int -> sum
+
+val to_string : sum -> (int -> string) -> string

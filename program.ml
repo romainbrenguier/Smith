@@ -92,6 +92,16 @@ let rec output outch = function
 	Printf.fprintf outch "| %s %a -> %a\n" c output a output b
       ) l
     
+let function_output outch name x = 
+  let rec aux1 = function
+    | Fun (a,b) -> 
+      Printf.fprintf outch "%a " output a;
+      aux1 b 
+    | p -> Printf.fprintf outch "= %a" output p
+  in
+  Printf.fprintf outch "let %s " name;
+  aux1 x;
+  Printf.fprintf outch "\n"
 
 let rec select_one = function
   | Alt (hd :: _) -> select_one hd

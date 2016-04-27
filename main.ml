@@ -14,6 +14,8 @@ let () =
     [
       "-i", String (fun x -> include_files := x :: !include_files), "-i <file.mli> \tAdd function included in <file.mli> to the list of functions to use.";
       "-o", String (fun x -> output_file := Some x), "-o <file.ml> \tSet output file to <file.ml>.";
+      "-info", Set info_ref, "-info \tActivate the printing of information during execution.";
+      "-debug", Set debug_ref, "-debug \tActivate the printing of debuging information.";
     ]
     (fun x -> filename := x)
     "Usage: smith (-i file.mli)* file.mli"
@@ -37,13 +39,13 @@ let parse_with_error lexbuf =
 let rec parse (tenv, accu) lexbuf =
   match parse_with_error lexbuf with
   | Decl (n,t) ->
-    Printf.printf "val %s : %a\n" n Type.output t;
+    if info () then Printf.printf "val %s : %a\n" n Type.output t;
     parse (tenv, (n,t) :: accu) lexbuf
   | NewType (n,Some t) ->
-    Printf.printf "type %s = %a\n" n Type.output t;
+    if info () then Printf.printf "type %s = %a\n" n Type.output t;
     parse ((n,Some t) :: tenv, accu) lexbuf
   | NewType (n,None) ->
-    Printf.printf "type %s\n" n;
+    if info () then Printf.printf "type %s\n" n;
     parse ((n,None) :: tenv, accu) lexbuf
   | Nothing -> (tenv,accu)
 
@@ -77,9 +79,18 @@ let test =
   in
   
 
+  let outch = match !output_file with None -> stdout | Some x -> open_out x in
+
   if info() then Printf.printf "Opening %s for synthesis\n" !filename;
   let tenv, to_synthesize = loop !filename in
-  List.iter (function (n,Some t) -> Hashtbl.add type_table n t | _ -> ()) tenv;
+  
+  List.iter (function 
+  | (n,Some t) -> 
+    Printf.fprintf outch "type %s = %a\n" n Type.output t;
+    Hashtbl.add type_table n t
+  | _ -> ()
+  ) tenv;
+
   let to_synthesize = List.map (fun (n,t) -> (n,Type.expend find_type t)) to_synthesize in
 
   let map = 
@@ -110,19 +121,18 @@ let test =
 	else loop goal (i+1) new_to_visit (ESet.union visited new_set)
   in
 
-  let outch = match !output_file with None -> stdout | Some x -> open_out x in
   
   let aux accu (n1,t1) = 
     match test_map accu t1 with
     | None ->
       (match loop t1 1 accu (Exploration.map_to_set accu) with 
       | new_map, Some x ->
-	Printf.fprintf outch "let %s = %a \n" n1 Program.output (Program.select_one x);
+	Program.function_output outch n1 (Program.select_one x);
 	new_map
       | new_map, None -> Printf.fprintf outch "let %s = failwith \"Synthesis failed for function %s\"\n" n1 n1; new_map
       )
     | Some x ->
-      Printf.fprintf outch "let %s = %a \n" n1 Program.output (Program.select_one x);
+      Program.function_output outch n1 (Program.select_one x);
       accu
 	
   in 
