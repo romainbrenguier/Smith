@@ -15,6 +15,7 @@
 %token EOL
 %token SEMI
 %token EXTERNAL EXCEPTION
+%token TIMES
 %right ARROW 
 %%
 
@@ -34,25 +35,22 @@ name:
 | LEFT_PAR; s=EQUALS; RIGHT_PAR { "(=)" }
 ;
 
+star_expressions:
+| tl = star_expressions; STAR; t1 = expression;  { t1 :: tl }
+| t1 = expression { [t1] }
+;
 
 expression:
 | t1 = expression; t2=LIDENT { Type._of t1 (Type.atom t2) }
 | t1 = expression; ARROW; t2=expression { Type.arrow t1 t2 }
-| t1 = expression; STAR; tl=star_expression { Type.tuple (t1 :: tl) }
+| tl = star_expressions; STAR; t1=expression { Type.tuple (t1 :: tl) }
 | c=UIDENT; OF; t = expression; PIPE; c2=UIDENT; OF; t2 = expression { Type.union [(c,t);(c2,t2)] }
 | LEFT_PAR; t = expression; RIGHT_PAR { t } 
 | s = LIDENT { Type.atom s }
 | s = ABS { Type.var s }
 ;
 
-constr_expr: 
-(*| ce=constr_expr; PIPE; c=UIDENT; OF; t = expression { (c,t) :: ce }*)
-| c=UIDENT; OF; t =expression { [c,t] }
-;
 
-star_expression:
-| t1 = expression; STAR; tl=star_expression { t1 :: tl }
-| t1 = expression { [t1] }
-;
+
 
 

@@ -84,6 +84,22 @@ let tuple map goal =
       (Type.tuple [Term.typ enva; Term.typ envb])
       subtypes
   in
+  List.fold_left 
+    (fun accu -> 
+      function Type.Tuple list ->
+	(try
+	   let maps = List.map (fun x -> TermMap.find_typ x map) list in
+	   let first = List.map
+	     (fun m -> let k,p = TermMap.EMap.choose m in k,p) maps
+	   in
+	   let p = Program.Tuple (List.map snd first) in
+	   let e = List.map fst first |> List.fold_left TSet.union TSet.empty in
+	   TermMap.add (e |- Tuple list) p accu
+	 with Not_found -> accu)
+      | _ -> accu
+    ) TermMap.empty subtypes 
+    
+(*failwith "in Exploration.tuple: need to be improved.";
   TermMap.fold (fun enva p accu ->
     TermMap.fold (fun envb q accu ->
       if is_subtype enva envb 
@@ -94,21 +110,22 @@ let tuple map goal =
 	  (Program.tuple [p;q])
       else accu
     ) map accu
-  ) map TermMap.empty
+  ) map TermMap.empty*)
 
+let select_in_tuple tupl typ p = 
+  let open Program in
+  Apply (Fun (Tuple(List.map (fun x -> Var (Type.default_name x)) tupl),
+	      Var(Type.default_name typ)) , p)
+  
 let untuple map =
   TermMap.fold (fun enva p accu ->
     match Term.typ enva with
-    | Tuple [a;b] ->
-      let ac = 
+    | Tuple list ->
+      List.fold_left (fun accu t ->
 	add_program accu
-	  (Term.set_type enva a)
-	  (Program.apply (Program.var "fst") p)
-      in 
-      add_program ac
-	(Term.set_type enva b)
-	(Program.apply (Program.var "snd") p)
-	
+	  (Term.set_type enva t)
+	  (select_in_tuple list t p)
+      ) accu list
     | _ -> accu
   ) map TermMap.empty
 

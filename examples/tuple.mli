@@ -1,6 +1,6 @@
-type tuple = int * string
+type tuple = int * string * int
 
 val make : int -> string -> tuple
-val get_int : tuple -> int
-val get_string : tuple -> string
+val get_int : (int * string) -> int
+
 
